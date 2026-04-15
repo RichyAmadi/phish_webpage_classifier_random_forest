@@ -2,12 +2,13 @@ import os
 import pickle
 from pathlib import Path
 from flask import Flask, jsonify, render_template, request
-from model_utils import CLASS_LABELS, URL_FEATURE_COLUMNS, extract_url_features
+from model_utils import CLASS_LABELS, URL_FEATURE_COLUMNS, extract_url_features, validate_url
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / 'phishing_model.pkl'
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
+app.config['MODEL_LOADED'] = False
 
 
 def load_model():
@@ -18,16 +19,24 @@ def load_model():
     with MODEL_PATH.open('rb') as file:
         return pickle.load(file)
 
-model = load_model()
+try:
+    model = load_model()
+    app.config['MODEL_LOADED'] = True
+except FileNotFoundError:
+    model = None
+    app.logger.warning('Model file not found. The app will start but the API is unavailable until the model is added.')
 
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', model_loaded=app.config['MODEL_LOADED'])
 
 
 @app.route('/api/predict', methods=['POST'])
 def predict():
+    if not app.config['MODEL_LOADED'] or model is None:
+        return jsonify({'error': 'Model is not available. Please add phishing_model.pkl and restart the app.'}), 503
+
     data = request.get_json(silent=True)
     if not data or 'url' not in data:
         return jsonify({'error': 'Please provide a URL in JSON body with key "url".'}), 400
@@ -36,7 +45,14 @@ def predict():
     if not url:
         return jsonify({'error': 'URL cannot be empty.'}), 400
 
-    features = extract_url_features(url)
+    if not validate_url(url):
+        return jsonify({'error': 'Invalid URL format. Please provide a valid http or https URL.'}), 422
+
+    try:
+        features = extract_url_features(url)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 422
+
     vector = [features[name] for name in URL_FEATURE_COLUMNS]
     prediction = model.predict([vector])[0]
 

@@ -19,6 +19,17 @@ This repository contains a Flask web application that classifies URLs as either 
    http://127.0.0.1:5000
    ```
 
+## Run tests
+
+Install the dependencies and run:
+```bash
+py -m pytest -q
+```
+
+## Continuous integration
+
+This repository includes GitHub Actions CI that runs the tests on every push and pull request against `main`.
+
 ## Deploy as a standalone site
 
 ### Option 1: Deploy with Docker

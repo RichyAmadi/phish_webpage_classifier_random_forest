@@ -38,6 +38,22 @@ def normalize_url(url: str) -> str:
     return url
 
 
+def validate_url(url: str) -> bool:
+    normalized = normalize_url(url)
+    parsed = urlparse(normalized)
+    if parsed.scheme not in {'http', 'https'}:
+        return False
+    if not parsed.netloc:
+        return False
+    if ' ' in parsed.netloc:
+        return False
+    if not re.search(r'[A-Za-z0-9]', parsed.netloc):
+        return False
+    if not parsed.netloc.count('.') and not is_ip_address(parsed.netloc):
+        return False
+    return True
+
+
 def is_ip_address(host: str) -> bool:
     return bool(re.fullmatch(r'\d{1,3}(?:\.\d{1,3}){3}', host))
 
@@ -75,6 +91,8 @@ def contains_tld_segment(text: str) -> int:
 
 
 def extract_url_features(url: str) -> dict[str, float]:
+    if not validate_url(url):
+        raise ValueError('Invalid URL format')
     url = normalize_url(url)
     parsed = urlparse(url)
     host = parsed.netloc or ''
