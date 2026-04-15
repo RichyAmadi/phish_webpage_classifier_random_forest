@@ -1,0 +1,11 @@
+{
+  "name": "phishing-webpage-classifier",
+  "services": [
+    {
+      "name": "web",
+      "plugin": "python",
+      "path": ".",
+      "startCommand": "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2"
+    }
+  ]
+}
